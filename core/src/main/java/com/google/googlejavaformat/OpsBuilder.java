@@ -14,8 +14,10 @@
 
 package com.google.googlejavaformat;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Optional;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -26,6 +28,7 @@ import com.google.googlejavaformat.Input.Token;
 import com.google.googlejavaformat.Output.BreakTag;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * An {@code OpsBuilder} creates a list of {@link Op}s, which is turned into a {@link Doc} by {@link
@@ -39,14 +42,14 @@ public final class OpsBuilder {
     int start = startToken.getTok().getPosition();
     for (Tok tok : startToken.getToksBefore()) {
       if (tok.isComment()) {
-        start = Math.min(start, tok.getPosition());
+        start = min(start, tok.getPosition());
       }
     }
     Token endToken = input.getPositionTokenMap().get(position + length - 1);
     int end = endToken.getTok().getPosition() + endToken.getTok().length();
     for (Tok tok : endToken.getToksAfter()) {
       if (tok.isComment()) {
-        end = Math.max(end, tok.getPosition() + tok.length());
+        end = max(end, tok.getPosition() + tok.length());
       }
     }
     return end - start;
@@ -62,7 +65,7 @@ public final class OpsBuilder {
         return start;
       }
       if (tok.isComment()) {
-        start = Math.min(start, tok.getPosition());
+        start = min(start, tok.getPosition());
       }
     }
     return start;
@@ -82,7 +85,7 @@ public final class OpsBuilder {
      * declaration). Overrides conditional blank lines.
      */
     public static final BlankLineWanted PRESERVE =
-        new SimpleBlankLine(/* wanted= */ Optional.absent());
+        new SimpleBlankLine(/* wanted= */ Optional.empty());
 
     /** Is the blank line wanted? */
     public abstract Optional<Boolean> wanted();
@@ -128,7 +131,7 @@ public final class OpsBuilder {
             return Optional.of(true);
           }
         }
-        return Optional.absent();
+        return Optional.empty();
       }
 
       @Override
@@ -243,7 +246,7 @@ public final class OpsBuilder {
                 token,
                 Doc.Token.RealOrImaginary.IMAGINARY,
                 ZERO,
-                /* breakAndIndentTrailingComment= */ Optional.absent()));
+                /* breakAndIndentTrailingComment= */ Optional.empty()));
       }
     }
     this.inputPosition = inputPosition;
@@ -266,10 +269,16 @@ public final class OpsBuilder {
 
   /** Return the text of the next {@link Input.Token}, or absent if there is none. */
   public final Optional<String> peekToken() {
+    return peekToken(0);
+  }
+
+  /** Return the text of an upcoming {@link Input.Token}, or absent if there is none. */
+  public final Optional<String> peekToken(int skip) {
     ImmutableList<? extends Input.Token> tokens = input.getTokens();
-    return tokenI < tokens.size()
-        ? Optional.of(tokens.get(tokenI).getTok().getOriginalText())
-        : Optional.absent();
+    int idx = tokenI + skip;
+    return idx < tokens.size()
+        ? Optional.of(tokens.get(idx).getTok().getOriginalText())
+        : Optional.empty();
   }
 
   /**
@@ -283,7 +292,7 @@ public final class OpsBuilder {
         token,
         Doc.Token.RealOrImaginary.IMAGINARY,
         ZERO,
-        /* breakAndIndentTrailingComment=  */ Optional.absent());
+        /* breakAndIndentTrailingComment=  */ Optional.empty());
   }
 
   public final void token(
@@ -292,7 +301,7 @@ public final class OpsBuilder {
       Indent plusIndentCommentsBefore,
       Optional<Indent> breakAndIndentTrailingComment) {
     ImmutableList<? extends Input.Token> tokens = input.getTokens();
-    if (token.equals(peekToken().orNull())) { // Found the input token. Output it.
+    if (token.equals(peekToken().orElse(null))) { // Found the input token. Output it.
       add(
           Doc.Token.make(
               tokens.get(tokenI++),
@@ -308,7 +317,8 @@ public final class OpsBuilder {
         throw new FormattingError(
             diagnostic(
                 String.format(
-                    "expected token: '%s'; generated %s instead", peekToken().orNull(), token)));
+                    "expected token: '%s'; generated %s instead",
+                    peekToken().orElse(null), token)));
       }
     }
   }
@@ -325,7 +335,7 @@ public final class OpsBuilder {
           op.substring(i, i + 1),
           Doc.Token.RealOrImaginary.REAL,
           ZERO,
-          /* breakAndIndentTrailingComment=  */ Optional.absent());
+          /* breakAndIndentTrailingComment=  */ Optional.empty());
     }
   }
 
@@ -393,7 +403,7 @@ public final class OpsBuilder {
    * @param plusIndent extra indent if taken
    */
   public final void breakOp(Doc.FillMode fillMode, String flat, Indent plusIndent) {
-    breakOp(fillMode, flat, plusIndent, /* optionalTag=  */ Optional.absent());
+    breakOp(fillMode, flat, plusIndent, /* optionalTag=  */ Optional.empty());
   }
 
   /**
@@ -530,7 +540,7 @@ public final class OpsBuilder {
                     Doc.Break.make(
                         Doc.FillMode.FORCED,
                         "",
-                        tokenOp.breakAndIndentTrailingComment().or(Const.ZERO)));
+                        tokenOp.breakAndIndentTrailingComment().orElse(Const.ZERO)));
               } else {
                 tokOps.put(k + 1, SPACE);
               }

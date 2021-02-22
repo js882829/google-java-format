@@ -16,17 +16,18 @@ package com.google.googlejavaformat.java;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.fail;
 
 import com.google.common.base.Joiner;
 import com.google.common.io.CharStreams;
+import com.google.googlejavaformat.java.JavaFormatterOptions.Style;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.Rule;
@@ -62,7 +63,7 @@ public final class FormatterTest {
 
     Path tmpdir = testFolder.newFolder().toPath();
     Path path = tmpdir.resolve("A.java");
-    Files.write(path, input.getBytes(StandardCharsets.UTF_8));
+    Files.write(path, input.getBytes(UTF_8));
 
     StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
@@ -83,8 +84,8 @@ public final class FormatterTest {
     assertThat(main.format("foo.go")).isEqualTo(0);
     assertThat(err.toString()).contains("Skipping non-Java file: " + "foo.go");
 
-    // should fail because the file does not exist
-    assertThat(main.format("Foo.java")).isNotEqualTo(0);
+    // format still fails on missing files
+    assertThat(main.format("Foo.java")).isEqualTo(1);
     assertThat(err.toString()).contains("Foo.java: could not read file: ");
   }
 
@@ -93,7 +94,7 @@ public final class FormatterTest {
     String input = "class Foo{\n" + "void f\n" + "() {\n" + "}\n" + "}\n";
     String expectedOutput = "class Foo {\n" + "  void f() {}\n" + "}\n";
 
-    InputStream in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+    InputStream in = new ByteArrayInputStream(input.getBytes(UTF_8));
     StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
 
@@ -114,7 +115,7 @@ public final class FormatterTest {
 
     Path tmpdir = testFolder.newFolder().toPath();
     Path path = tmpdir.resolve("Foo.java");
-    Files.write(path, input.getBytes(StandardCharsets.UTF_8));
+    Files.write(path, input.getBytes(UTF_8));
 
     StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
@@ -131,7 +132,7 @@ public final class FormatterTest {
 
     Path tmpdir = testFolder.newFolder().toPath();
     Path path = tmpdir.resolve("Foo.java");
-    Files.write(path, input.getBytes(StandardCharsets.UTF_8));
+    Files.write(path, input.getBytes(UTF_8));
 
     StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
@@ -301,7 +302,7 @@ public final class FormatterTest {
     String inputResourceName = "com/google/googlejavaformat/java/testimports/A.input";
     String input = getResource(inputResourceName);
     String expectedOutput = getResource(outputResourceName);
-    Files.write(path, input.getBytes(StandardCharsets.UTF_8));
+    Files.write(path, input.getBytes(UTF_8));
 
     StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
@@ -314,14 +315,14 @@ public final class FormatterTest {
 
     assertThat(err.toString()).isEmpty();
     assertThat(out.toString()).isEmpty();
-    String output = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    String output = new String(Files.readAllBytes(path), UTF_8);
     assertThat(output).isEqualTo(expectedOutput);
   }
 
   private String getResource(String resourceName) throws IOException {
     try (InputStream stream = getClass().getClassLoader().getResourceAsStream(resourceName)) {
       assertWithMessage("Missing resource: " + resourceName).that(stream).isNotNull();
-      return CharStreams.toString(new InputStreamReader(stream, StandardCharsets.UTF_8));
+      return CharStreams.toString(new InputStreamReader(stream, UTF_8));
     }
   }
 
@@ -449,8 +450,46 @@ public final class FormatterTest {
 
     // Just fixing imports preserves whitespace around imports.
     assertThat(RemoveUnusedImports.removeUnusedImports(withBlank)).isEqualTo(withBlank);
-    assertThat(ImportOrderer.reorderImports(withBlank)).isEqualTo(withBlank);
+    assertThat(ImportOrderer.reorderImports(withBlank, Style.GOOGLE)).isEqualTo(withBlank);
     assertThat(RemoveUnusedImports.removeUnusedImports(withoutBlank)).isEqualTo(withoutBlank);
-    assertThat(ImportOrderer.reorderImports(withoutBlank)).isEqualTo(withoutBlank);
+    assertThat(ImportOrderer.reorderImports(withoutBlank, Style.GOOGLE)).isEqualTo(withoutBlank);
+  }
+
+  @Test
+  public void dontWrapMoeLineComments() throws Exception {
+    assertThat(
+            new Formatter()
+                .formatSource(
+                    "class T {\n"
+                        + "  // MOE: one long incredibly"
+                        + " unbroken sentence moving from topic to topic so that no-one had a"
+                        + " chance to interrupt;\n"
+                        + "}\n"))
+        .isEqualTo(
+            "class T {\n"
+                + "  // MOE: one long incredibly"
+                + " unbroken sentence moving from topic to topic so that no-one had a"
+                + " chance to interrupt;\n"
+                + "}\n");
+  }
+
+  @Test
+  public void removeTrailingTabsInComments() throws Exception {
+    assertThat(
+            new Formatter()
+                .formatSource(
+                    "class Foo {\n"
+                        + "  void f() {\n"
+                        + "    int x = 0; // comment\t\t\t\n"
+                        + "    return;\n"
+                        + "  }\n"
+                        + "}\n"))
+        .isEqualTo(
+            "class Foo {\n"
+                + "  void f() {\n"
+                + "    int x = 0; // comment\n"
+                + "    return;\n"
+                + "  }\n"
+                + "}\n");
   }
 }

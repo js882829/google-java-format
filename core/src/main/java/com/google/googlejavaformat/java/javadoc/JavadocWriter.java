@@ -15,6 +15,7 @@
 package com.google.googlejavaformat.java.javadoc;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Comparators.max;
 import static com.google.common.collect.Sets.immutableEnumSet;
 import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
 import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
@@ -28,8 +29,6 @@ import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Ordering;
-import com.google.googlejavaformat.java.JavaFormatterOptions;
 import com.google.googlejavaformat.java.javadoc.Token.Type;
 
 /**
@@ -41,7 +40,6 @@ import com.google.googlejavaformat.java.javadoc.Token.Type;
  */
 final class JavadocWriter {
   private final int blockIndent;
-  private final JavaFormatterOptions options;
   private final StringBuilder output = new StringBuilder();
   /**
    * Whether we are inside an {@code <li>} element, excluding the case in which the {@code <li>}
@@ -61,9 +59,8 @@ final class JavadocWriter {
   private int indentForMoeEndStripComment;
   private boolean wroteAnythingSignificant;
 
-  JavadocWriter(int blockIndent, JavaFormatterOptions options) {
+  JavadocWriter(int blockIndent) {
     this.blockIndent = blockIndent;
-    this.options = checkNotNull(options);
   }
 
   /**
@@ -273,8 +270,7 @@ final class JavadocWriter {
   }
 
   private void requestWhitespace(RequestedWhitespace requestedWhitespace) {
-    this.requestedWhitespace =
-        Ordering.natural().max(requestedWhitespace, this.requestedWhitespace);
+    this.requestedWhitespace = max(requestedWhitespace, this.requestedWhitespace);
   }
 
   /**
@@ -376,7 +372,7 @@ final class JavadocWriter {
     appendSpaces(blockIndent + 1);
     output.append("*");
     appendSpaces(1);
-    remainingOnLine = options.maxLineLength() - blockIndent - 3;
+    remainingOnLine = JavadocFormatter.MAX_LINE_LENGTH - blockIndent - 3;
     if (autoIndent == AUTO_INDENT) {
       appendSpaces(innerIndent());
       remainingOnLine -= innerIndent();

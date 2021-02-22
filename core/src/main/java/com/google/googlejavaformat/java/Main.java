@@ -14,6 +14,7 @@
 
 package com.google.googlejavaformat.java;
 
+import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.io.ByteStreams;
@@ -96,7 +97,10 @@ public final class Main {
     }
 
     JavaFormatterOptions options =
-        JavaFormatterOptions.builder().style(parameters.aosp() ? Style.AOSP : Style.GOOGLE).build();
+        JavaFormatterOptions.builder()
+            .style(parameters.aosp() ? Style.AOSP : Style.GOOGLE)
+            .formatJavadoc(parameters.formatJavadoc())
+            .build();
 
     if (parameters.stdin()) {
       return formatStdin(parameters, options);
@@ -106,11 +110,13 @@ public final class Main {
   }
 
   private int formatFiles(CommandLineOptions parameters, JavaFormatterOptions options) {
-    int numThreads = Math.min(MAX_THREADS, parameters.files().size());
+    int numThreads = min(MAX_THREADS, parameters.files().size());
     ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
 
     Map<Path, String> inputs = new LinkedHashMap<>();
     Map<Path, Future<String>> results = new LinkedHashMap<>();
+    boolean allOk = true;
+
     for (String fileName : parameters.files()) {
       if (!fileName.endsWith(".java")) {
         errWriter.println("Skipping non-Java file: " + fileName);
@@ -120,15 +126,15 @@ public final class Main {
       String input;
       try {
         input = new String(Files.readAllBytes(path), UTF_8);
+        inputs.put(path, input);
+        results.put(
+            path, executorService.submit(new FormatFileCallable(parameters, input, options)));
       } catch (IOException e) {
         errWriter.println(fileName + ": could not read file: " + e.getMessage());
-        return 1;
+        allOk = false;
       }
-      inputs.put(path, input);
-      results.put(path, executorService.submit(new FormatFileCallable(parameters, input, options)));
     }
 
-    boolean allOk = true;
     for (Map.Entry<Path, Future<String>> result : results.entrySet()) {
       Path path = result.getKey();
       String formatted;
@@ -141,7 +147,7 @@ public final class Main {
       } catch (ExecutionException e) {
         if (e.getCause() instanceof FormatterException) {
           for (FormatterDiagnostic diagnostic : ((FormatterException) e.getCause()).diagnostics()) {
-            errWriter.println(path + ":" + diagnostic.toString());
+            errWriter.println(path + ":" + diagnostic);
           }
         } else {
           errWriter.println(path + ": error: " + e.getCause().getMessage());
@@ -200,7 +206,7 @@ public final class Main {
       }
     } catch (FormatterException e) {
       for (FormatterDiagnostic diagnostic : e.diagnostics()) {
-        errWriter.println(stdinFilename + ":" + diagnostic.toString());
+        errWriter.println(stdinFilename + ":" + diagnostic);
       }
       ok = false;
       // TODO(cpovirk): Catch other types of exception (as we do in the formatFiles case).

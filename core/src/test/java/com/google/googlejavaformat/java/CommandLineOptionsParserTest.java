@@ -19,12 +19,12 @@ import static com.google.common.truth.Truth8.assertThat;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -39,7 +39,7 @@ public class CommandLineOptionsParserTest {
 
   @Test
   public void defaults() {
-    CommandLineOptions options = CommandLineOptionsParser.parse(Collections.<String>emptyList());
+    CommandLineOptions options = CommandLineOptionsParser.parse(ImmutableList.of());
     assertThat(options.files()).isEmpty();
     assertThat(options.stdin()).isFalse();
     assertThat(options.aosp()).isFalse();
@@ -53,6 +53,8 @@ public class CommandLineOptionsParserTest {
     assertThat(options.removeUnusedImports()).isTrue();
     assertThat(options.dryRun()).isFalse();
     assertThat(options.setExitIfChanged()).isFalse();
+    assertThat(options.reflowLongStrings()).isTrue();
+    assertThat(options.formatJavadoc()).isTrue();
   }
 
   @Test
@@ -157,7 +159,7 @@ public class CommandLineOptionsParserTest {
       CommandLineOptionsParser.parse(Arrays.asList("-lines=1:1", "-lines=1:1"));
       fail();
     } catch (IllegalArgumentException e) {
-      assertThat(e.getMessage()).contains("overlap");
+      assertThat(e).hasMessageThat().contains("overlap");
     }
   }
 
@@ -185,5 +187,21 @@ public class CommandLineOptionsParserTest {
         .hasValue("Foo.java");
     assertThat(CommandLineOptionsParser.parse(Arrays.asList("Foo.java")).assumeFilename())
         .isEmpty();
+  }
+
+  @Test
+  public void skipReflowLongStrings() {
+    assertThat(
+            CommandLineOptionsParser.parse(Arrays.asList("--skip-reflowing-long-strings"))
+                .reflowLongStrings())
+        .isFalse();
+  }
+
+  @Test
+  public void skipJavadocFormatting() {
+    assertThat(
+            CommandLineOptionsParser.parse(Arrays.asList("--skip-javadoc-formatting"))
+                .formatJavadoc())
+        .isFalse();
   }
 }

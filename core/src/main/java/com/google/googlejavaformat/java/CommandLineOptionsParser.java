@@ -54,7 +54,7 @@ final class CommandLineOptionsParser {
       int idx = option.indexOf('=');
       if (idx >= 0) {
         flag = option.substring(0, idx);
-        value = option.substring(idx + 1, option.length());
+        value = option.substring(idx + 1);
       } else {
         flag = option;
         value = null;
@@ -104,6 +104,12 @@ final class CommandLineOptionsParser {
           break;
         case "--skip-removing-unused-imports":
           optionsBuilder.removeUnusedImports(false);
+          break;
+        case "--skip-reflowing-long-strings":
+          optionsBuilder.reflowLongStrings(false);
+          break;
+        case "--skip-javadoc-formatting":
+          optionsBuilder.formatJavadoc(false);
           break;
         case "-":
           optionsBuilder.stdin(true);

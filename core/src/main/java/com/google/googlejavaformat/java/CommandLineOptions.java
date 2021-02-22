@@ -41,6 +41,8 @@ final class CommandLineOptions {
   private final boolean dryRun;
   private final boolean setExitIfChanged;
   private final Optional<String> assumeFilename;
+  private final boolean reflowLongStrings;
+  private final boolean formatJavadoc;
 
   CommandLineOptions(
       ImmutableList<String> files,
@@ -57,7 +59,9 @@ final class CommandLineOptions {
       boolean removeUnusedImports,
       boolean dryRun,
       boolean setExitIfChanged,
-      Optional<String> assumeFilename) {
+      Optional<String> assumeFilename,
+      boolean reflowLongStrings,
+      boolean formatJavadoc) {
     this.files = files;
     this.inPlace = inPlace;
     this.lines = lines;
@@ -73,6 +77,8 @@ final class CommandLineOptions {
     this.dryRun = dryRun;
     this.setExitIfChanged = setExitIfChanged;
     this.assumeFilename = assumeFilename;
+    this.reflowLongStrings = reflowLongStrings;
+    this.formatJavadoc = formatJavadoc;
   }
 
   /** The files to format. */
@@ -152,9 +158,17 @@ final class CommandLineOptions {
     return assumeFilename;
   }
 
+  boolean reflowLongStrings() {
+    return reflowLongStrings;
+  }
+
   /** Returns true if partial formatting was selected. */
   boolean isSelection() {
     return !lines().isEmpty() || !offsets().isEmpty() || !lengths().isEmpty();
+  }
+
+  boolean formatJavadoc() {
+    return formatJavadoc;
   }
 
   static Builder builder() {
@@ -178,6 +192,8 @@ final class CommandLineOptions {
     private boolean dryRun = false;
     private boolean setExitIfChanged = false;
     private Optional<String> assumeFilename = Optional.empty();
+    private boolean reflowLongStrings = true;
+    private boolean formatJavadoc = true;
 
     ImmutableList.Builder<String> filesBuilder() {
       return files;
@@ -252,6 +268,16 @@ final class CommandLineOptions {
       return this;
     }
 
+    Builder reflowLongStrings(boolean reflowLongStrings) {
+      this.reflowLongStrings = reflowLongStrings;
+      return this;
+    }
+
+    Builder formatJavadoc(boolean formatJavadoc) {
+      this.formatJavadoc = formatJavadoc;
+      return this;
+    }
+
     CommandLineOptions build() {
       return new CommandLineOptions(
           files.build(),
@@ -268,7 +294,9 @@ final class CommandLineOptions {
           removeUnusedImports,
           dryRun,
           setExitIfChanged,
-          assumeFilename);
+          assumeFilename,
+          reflowLongStrings,
+          formatJavadoc);
     }
   }
 }
